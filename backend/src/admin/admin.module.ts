@@ -3,6 +3,7 @@ import { PrismaService } from '@/database/prisma.service';
 import { SupabaseStorageService } from '@/storage/supabase-storage.service';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
+import { AuthModule } from '@/auth/auth.module';
 
 // Placeholder: Admin module for administrative operations
 // Implementation includes:
@@ -12,6 +13,7 @@ import { AdminService } from './admin.service';
 // - System settings
 
 @Module({
+  imports: [AuthModule],
   controllers: [AdminController],
   providers: [AdminService, PrismaService, SupabaseStorageService],
 })

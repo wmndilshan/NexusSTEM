@@ -23,13 +23,16 @@ async function bootstrap() {
   );
 
   // CORS
+  const allowAnyOrigin = process.env.CORS_ALLOW_ANY_ORIGIN !== 'false';
   app.enableCors({
-    origin: [
-      'http://localhost:3000',
-      'http://localhost:3001',
-      'http://localhost:3002',
-      process.env.FRONTEND_URL || 'http://localhost:3000',
-    ],
+    origin: allowAnyOrigin
+      ? true
+      : [
+          'http://localhost:3000',
+          'http://localhost:3001',
+          'http://localhost:3002',
+          process.env.FRONTEND_URL || 'http://localhost:3000',
+        ],
     credentials: true,
   });
 
