@@ -3,8 +3,9 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 @Injectable()
 export class SupabaseStorageService {
-  private client: SupabaseClient;
+  private client: SupabaseClient | null = null;
   private bucket: string;
+  private missingConfig = false;
 
   constructor() {
     const supabaseUrl = process.env.SUPABASE_URL;
@@ -12,9 +13,8 @@ export class SupabaseStorageService {
     this.bucket = process.env.SUPABASE_STORAGE_BUCKET || 'uploads';
 
     if (!supabaseUrl || !serviceRoleKey) {
-      throw new BadRequestException(
-        'Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variable',
-      );
+      this.missingConfig = true;
+      return;
     }
 
     this.client = createClient(supabaseUrl, serviceRoleKey, {
@@ -30,6 +30,12 @@ export class SupabaseStorageService {
     fileBuffer: Buffer,
     contentType: string,
   ): Promise<{ path: string; publicUrl: string }> {
+    if (this.missingConfig || !this.client) {
+      throw new BadRequestException(
+        'Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variable',
+      );
+    }
+
     const { data, error } = await this.client.storage
       .from(this.bucket)
       .upload(filePath, fileBuffer, {
