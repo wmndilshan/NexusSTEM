@@ -366,3 +366,12 @@ enum InventoryAdjustmentType {
 
   @@map("inventory_adjustment_types")
 }
+
+model SiteSetting {
+  key       String   @id
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("site_settings")
+}

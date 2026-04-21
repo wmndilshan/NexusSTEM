@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
@@ -15,8 +14,29 @@ import {
   Building2 
 } from 'lucide-react';
 
-export default function Home() {
+async function getHeroImageUrl() {
+  const apiBaseUrl =
+    process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3333';
+
+  try {
+    const response = await fetch(`${apiBaseUrl}/api/v1/site-settings/hero`, {
+      next: { revalidate: 60 },
+    });
+
+    if (!response.ok) {
+      return 'https://picsum.photos/seed/tech/1200/900';
+    }
+
+    const data = (await response.json()) as { heroImageUrl?: string | null };
+    return data.heroImageUrl || 'https://picsum.photos/seed/tech/1200/900';
+  } catch {
+    return 'https://picsum.photos/seed/tech/1200/900';
+  }
+}
+
+export default async function Home() {
   const featuredProducts = PRODUCTS.filter(p => p.isFeatured).slice(0, 4);
+  const heroImageUrl = await getHeroImageUrl();
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -55,12 +75,10 @@ export default function Home() {
               <div className="relative group">
                 <div className="aspect-[4/3] relative rounded-[40px] bg-slate-900 border border-slate-800 overflow-hidden shadow-2xl flex items-center justify-center">
                   <div className="absolute inset-0 bg-gradient-to-tr from-primary/40 to-transparent z-10" />
-                  <Image 
-                    src="https://picsum.photos/seed/tech/1200/900"
+                  <img
+                    src={heroImageUrl}
                     alt="NexusSTEM Tech"
-                    fill
-                    className="object-cover opacity-60 mix-blend-luminosity hover:opacity-80 transition-opacity duration-700"
-                    priority
+                    className="absolute inset-0 h-full w-full object-cover opacity-60 mix-blend-luminosity hover:opacity-80 transition-opacity duration-700"
                     referrerPolicy="no-referrer"
                   />
                   <div className="absolute bottom-8 left-8 z-20 text-white">

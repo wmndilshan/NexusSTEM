@@ -1,10 +1,11 @@
 # Build stage
-FROM node:18-alpine AS builder
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
+COPY prisma ./prisma
 
 # Install dependencies
 RUN npm ci
@@ -12,29 +13,21 @@ RUN npm ci
 # Copy source
 COPY . .
 
-# Generate Prisma client
-RUN npx prisma generate
-
 # Build application
 RUN npm run build
 
 # Production stage
-FROM node:18-alpine
+FROM node:20-alpine
 
 WORKDIR /app
 
 # Install only production dependencies
 COPY package*.json ./
-RUN npm ci --only=production
-
-# Copy Prisma files
 COPY prisma ./prisma
+RUN npm ci --omit=dev
 
 # Copy built application from builder
 COPY --from=builder /app/dist ./dist
-
-# Generate Prisma client in production image
-RUN npx prisma generate
 
 # Expose port
 EXPOSE 3333
