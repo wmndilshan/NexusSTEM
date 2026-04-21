@@ -10,7 +10,7 @@
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
-    "start:railway": "npm run db:push && npm run start:prod",
+    "start:railway": "npm run start:prod",
     "build": "nest build",
     "build:prod": "nest build --webpack",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
