@@ -1,0 +1,368 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id        String     @id @default(cuid())
+  email     String     @unique
+  fullName  String?
+  phone     String?
+  role      UserRole   @default(CUSTOMER)
+  
+  // Relations
+  b2bAccount    B2bAccount?
+  carts         Cart[]
+  orders        Order[]
+  verifiedBankTransfers BankTransferSubmission[] @relation("VerifiedBy")
+  inventoryAdjustments InventoryAdjustment[]
+  
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@map("users")
+}
+
+enum UserRole {
+  CUSTOMER
+  B2B_CUSTOMER
+  ADMIN
+  STAFF
+
+  @@map("user_roles")
+}
+
+model B2bAccount {
+  id        String     @id @default(cuid())
+  userId    String     @unique
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  businessName  String
+  contactPerson String?
+  businessType  String? // e.g., "university", "tech_firm", "manufacturer"
+  pricingTier   B2bTier @default(STANDARD)
+  status        B2bStatus @default(PENDING)
+  expectedMonthlyVolumeLkr Int?
+  notes         String?
+
+  // Relations
+  orders Order[]
+
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@map("b2b_accounts")
+}
+
+enum B2bTier {
+  STANDARD
+  TIER_1
+  TIER_2
+
+  @@map("b2b_tiers")
+}
+
+enum B2bStatus {
+  PENDING
+  APPROVED
+  REJECTED
+
+  @@map("b2b_statuses")
+}
+
+model Category {
+  id        String     @id @default(cuid())
+  name      String     @unique
+  slug      String     @unique
+  description String?
+
+  // Relations
+  products  Product[]
+
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@map("categories")
+}
+
+model Product {
+  id        String     @id @default(cuid())
+  name      String
+  slug      String     @unique
+  sku       String     @unique
+  categoryId String
+  category  Category   @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  shortDescription String?
+  description String?
+  technicalSpecs Json?
+
+  basePriceLkr Int
+  b2bPriceLkr  Int?
+  currency     String @default("LKR")
+
+  stockQty Int @default(0)
+  preorderEnabled Boolean @default(false)
+  status   ProductStatus @default(DRAFT)
+
+  featuredImageUrl String?
+
+  // Relations
+  images    ProductImage[]
+  cartItems CartItem[]
+  orderItems OrderItem[]
+  inventoryAdjustments InventoryAdjustment[]
+
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@map("products")
+}
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+
+  @@map("product_statuses")
+}
+
+model ProductImage {
+  id        String     @id @default(cuid())
+  productId String
+  product   Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  imageUrl  String
+  sortOrder Int @default(0)
+
+  createdAt DateTime   @default(now())
+
+  @@map("product_images")
+}
+
+model Cart {
+  id        String     @id @default(cuid())
+  userId    String     @unique
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Relations
+  items     CartItem[]
+
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@map("carts")
+}
+
+model CartItem {
+  id        String     @id @default(cuid())
+  cartId    String
+  cart      Cart       @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  
+  productId String
+  product   Product    @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  quantity  Int
+  unitPriceLkr Int
+  pricingType PricingType
+
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@unique([cartId, productId])
+  @@map("cart_items")
+}
+
+enum PricingType {
+  RETAIL
+  B2B
+
+  @@map("pricing_types")
+}
+
+model Order {
+  id        String     @id @default(cuid())
+  orderNumber String   @unique
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  b2bAccountId String?
+  b2bAccount   B2bAccount? @relation(fields: [b2bAccountId], references: [id], onDelete: SetNull)
+
+  customerType CustomerType
+  subtotalLkr  Int
+  deliveryFeeLkr Int @default(400)
+  totalLkr     Int
+  currency     String @default("LKR")
+
+  paymentMethod PaymentMethod
+  paymentStatus PaymentStatus @default(PENDING)
+  fulfillmentStatus FulfillmentStatus @default(PENDING)
+
+  preorderFlag Boolean @default(false)
+  notes        String?
+
+  // Relations
+  items    OrderItem[]
+  shippingAddress ShippingAddress?
+  paymentTransactions PaymentTransaction[]
+  bankTransferSubmission BankTransferSubmission?
+
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@map("orders")
+}
+
+enum CustomerType {
+  RETAIL
+  B2B
+
+  @@map("customer_types")
+}
+
+enum PaymentMethod {
+  BANK_TRANSFER
+
+  @@map("payment_methods")
+}
+
+enum PaymentStatus {
+  PENDING
+  AUTHORIZED
+  PAID
+  FAILED
+  REFUNDED
+  AWAITING_VERIFICATION
+
+  @@map("payment_statuses")
+}
+
+enum FulfillmentStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+
+  @@map("fulfillment_statuses")
+}
+
+model OrderItem {
+  id        String     @id @default(cuid())
+  orderId   String
+  order     Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  productId String
+  product   Product    @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  productNameSnapshot String
+  skuSnapshot String
+  quantity  Int
+  unitPriceLkr Int
+  lineTotalLkr Int
+
+  createdAt DateTime   @default(now())
+
+  @@map("order_items")
+}
+
+model ShippingAddress {
+  id        String     @id @default(cuid())
+  orderId   String     @unique
+  order     Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  fullName  String
+  phone     String
+  addressLine1 String
+  addressLine2 String?
+  city      String
+  district  String
+  postalCode String?
+
+  createdAt DateTime   @default(now())
+
+  @@map("shipping_addresses")
+}
+
+model PaymentTransaction {
+  id        String     @id @default(cuid())
+  orderId   String
+  order     Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  paymentMethod PaymentMethod
+  providerReference String?
+  providerPayload Json?
+  transactionStatus String
+
+  amountLkr Int
+
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@map("payment_transactions")
+}
+
+model BankTransferSubmission {
+  id        String     @id @default(cuid())
+  orderId   String     @unique
+  order     Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  bankName  String
+  accountName String?
+  transferReference String
+  proofFileUrl String?
+
+  submittedAt DateTime @default(now())
+  verifiedBy  String?
+  verifiedByUser User?  @relation("VerifiedBy", fields: [verifiedBy], references: [id], onDelete: SetNull)
+  verifiedAt  DateTime?
+  verificationStatus BankTransferVerificationStatus @default(PENDING)
+  notes       String?
+
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@map("bank_transfer_submissions")
+}
+
+enum BankTransferVerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+
+  @@map("bank_transfer_verification_statuses")
+}
+
+model InventoryAdjustment {
+  id        String     @id @default(cuid())
+  productId String
+  product   Product    @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  adjustmentType InventoryAdjustmentType
+  quantityDelta  Int
+  reason    String?
+
+  createdBy String?
+  createdByUser User? @relation(fields: [createdBy], references: [id], onDelete: SetNull)
+
+  createdAt DateTime   @default(now())
+
+  @@map("inventory_adjustments")
+}
+
+enum InventoryAdjustmentType {
+  ORDER
+  MANUAL
+  STOCK_CORRECTION
+
+  @@map("inventory_adjustment_types")
+}
